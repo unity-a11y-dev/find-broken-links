@@ -44,12 +44,14 @@ def status(job_id):
     job_status = job.get_status()
     
     if job.is_finished:
-        return render_template('status.html', job=job, status='finished', progress=100, job_status=job_status)
+        return render_template('status.html', job=job, status='finished', job_status=job_status)
     elif job.is_failed:
-        return render_template('status.html', job=job, status='failed', progress=0, job_status=job_status)
+        return render_template('status.html', job=job, status='failed', job_status=job_status)
     else:
-        progress = job.meta.get('progress', 0)
-        return render_template('status.html', job=job, status='processing', progress=progress, job_status=job_status)
+        logs = job.meta.get('logs', [])
+        processed = job.meta.get('processed', 0)
+        total = job.meta.get('total', 0)
+        return render_template('status.html', job=job, status='processing', logs=logs, processed=processed, total=total, job_status=job_status)
 
 @app.route('/download/<job_id>/<type>')
 def download(job_id, type):

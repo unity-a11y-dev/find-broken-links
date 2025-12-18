@@ -251,13 +251,24 @@ def process_csv_task(csv_content: str, timeout=12.0, workers=20, delay=0.0, trea
             (active if res.ok else broken).append(res)
             
             processed_count += 1
-            if job and processed_count % 5 == 0: # Update every 5 URLs to reduce Redis load
-                job.meta['progress'] = int((processed_count / total_urls) * 100)
+            if job:
+                # Update logs with the latest result
+                current_logs = job.meta.get('logs', [])
+                log_entry = {
+                    'url': res.url,
+                    'status': res.status_code,
+                    'ok': res.ok
+                }
+                # Insert at beginning and keep only last 10
+                current_logs.insert(0, log_entry)
+                job.meta['logs'] = current_logs[:10]
+                job.meta['processed'] = processed_count
+                job.meta['total'] = total_urls
                 job.save_meta()
-                print(f"Progress: {processed_count}/{total_urls}")
+                print(f"Checked: {res.url} [{res.status_code}]")
 
     if job:
-        job.meta['progress'] = 100
+        job.meta['processed'] = total_urls
         job.save_meta()
         
     print(f"Finished check. Good: {len(active)}, Bad: {len(broken)}")

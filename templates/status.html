@@ -79,23 +79,48 @@
             outline: 3px solid #0056b3;
             outline-offset: 2px;
         }
-        .progress-container {
-            width: 100%;
-            background-color: #f0f0f0;
+        .log-container {
+            margin-top: 20px;
+            text-align: left;
+            border: 1px solid #ddd;
             border-radius: 4px;
-            margin: 20px 0;
-            height: 24px;
-            border: 1px solid #ccc;
+            background: #fff;
+            max-height: 300px;
+            overflow-y: auto;
         }
-        .progress-bar {
-            height: 100%;
-            background-color: #0056b3;
-            border-radius: 3px;
-            transition: width 0.5s ease-in-out;
-            text-align: center;
-            color: white;
-            line-height: 24px;
-            font-size: 14px;
+        .log-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .log-list li {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+            font-family: monospace;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+        }
+        .log-list li:last-child {
+            border-bottom: none;
+        }
+        .log-ok {
+            color: #155724;
+            background-color: #d4edda;
+        }
+        .log-error {
+            color: #721c24;
+            background-color: #f8d7da;
+        }
+        .status-code {
+            font-weight: bold;
+            margin-right: 10px;
+            min-width: 40px;
+        }
+        .url {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
     </style>
 </head>
@@ -109,20 +134,25 @@
                 {% if job_status == 'queued' %}
                     <p>Your file is waiting in the queue.</p>
                 {% else %}
-                    <p>Your file is being processed. This page will refresh automatically.</p>
+                    <p>Processing URL {{ processed }} of {{ total }}</p>
+                    
+                    <div class="log-container">
+                        <ul class="log-list">
+                            {% for log in logs %}
+                                <li class="{{ 'log-ok' if log.ok else 'log-error' }}">
+                                    <span class="status-code">[{{ log.status }}]</span>
+                                    <span class="url" title="{{ log.url }}">{{ log.url }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
                 {% endif %}
-                <div class="progress-container" aria-label="Processing progress">
-                    <div class="progress-bar" style="width: {{ progress }}%;">{{ progress }}%</div>
-                </div>
-                <p>Job ID: {{ job.get_id() }}</p>
+                <p style="margin-top: 10px; font-size: 0.8em; color: #666;">Job ID: {{ job.get_id() }}</p>
             </div>
         {% elif status == 'finished' %}
             <div class="status-box finished" role="status">
                 <h2>Complete!</h2>
                 <p>Your file has been processed successfully.</p>
-                <div class="progress-container" aria-label="Processing progress">
-                    <div class="progress-bar" style="width: 100%;">100%</div>
-                </div>
                 <p>Found {{ job.result.total_good }} good links and {{ job.result.total_bad }} bad links.</p>
             </div>
             

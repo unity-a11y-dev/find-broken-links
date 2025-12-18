@@ -14,5 +14,8 @@ if redis_url.startswith('rediss://'):
 conn = redis.from_url(redis_url, **conn_kwargs)
 
 if __name__ == '__main__':
-    worker = Worker(map(Queue, listen), connection=conn)
+    # Explicitly pass connection to Queues to ensure they use the correct Redis instance
+    queues = [Queue(name, connection=conn) for name in listen]
+    worker = Worker(queues, connection=conn)
+    print(f"Worker listening on queues: {listen} with connection: {conn}")
     worker.work()
