@@ -238,6 +238,8 @@ def process_csv_task(csv_content: str, timeout=12.0, workers=20, delay=0.0, trea
     broken: List[LinkResult] = []
     total_urls = len(urls)
     processed_count = 0
+    
+    print(f"Starting check for {total_urls} URLs...")
 
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futures = [
@@ -249,9 +251,16 @@ def process_csv_task(csv_content: str, timeout=12.0, workers=20, delay=0.0, trea
             (active if res.ok else broken).append(res)
             
             processed_count += 1
-            if job:
+            if job and processed_count % 5 == 0: # Update every 5 URLs to reduce Redis load
                 job.meta['progress'] = int((processed_count / total_urls) * 100)
                 job.save_meta()
+                print(f"Progress: {processed_count}/{total_urls}")
+
+    if job:
+        job.meta['progress'] = 100
+        job.save_meta()
+        
+    print(f"Finished check. Good: {len(active)}, Bad: {len(broken)}")
 
     active.sort(key=lambda r: (r.status_code or 999, r.url))
     broken.sort(key=lambda r: (r.status_code or 999, r.url))

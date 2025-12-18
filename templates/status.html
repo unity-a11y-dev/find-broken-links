@@ -105,8 +105,12 @@
         
         {% if status == 'processing' %}
             <div class="status-box processing" role="status" aria-live="polite">
-                <h2>Processing...</h2>
-                <p>Your file is being processed. This page will refresh automatically.</p>
+                <h2>{{ job_status|title }}...</h2>
+                {% if job_status == 'queued' %}
+                    <p>Your file is waiting in the queue.</p>
+                {% else %}
+                    <p>Your file is being processed. This page will refresh automatically.</p>
+                {% endif %}
                 <div class="progress-container" aria-label="Processing progress">
                     <div class="progress-bar" style="width: {{ progress }}%;">{{ progress }}%</div>
                 </div>
@@ -134,6 +138,9 @@
             <div class="status-box failed" role="alert">
                 <h2>Failed</h2>
                 <p>Something went wrong while processing your file.</p>
+                {% if job.exc_info %}
+                    <pre style="text-align: left; background: #fff; padding: 10px; overflow-x: auto; font-size: 0.8em;">{{ job.exc_info }}</pre>
+                {% endif %}
             </div>
             <div style="margin-top: 30px; text-align: center;">
                 <a href="{{ url_for('index') }}" style="color: #0056b3;">Try again</a>

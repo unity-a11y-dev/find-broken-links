@@ -41,13 +41,15 @@ def status(job_id):
     except:
         return "Job not found", 404
     
+    job_status = job.get_status()
+    
     if job.is_finished:
-        return render_template('status.html', job=job, status='finished', progress=100)
+        return render_template('status.html', job=job, status='finished', progress=100, job_status=job_status)
     elif job.is_failed:
-        return render_template('status.html', job=job, status='failed', progress=0)
+        return render_template('status.html', job=job, status='failed', progress=0, job_status=job_status)
     else:
         progress = job.meta.get('progress', 0)
-        return render_template('status.html', job=job, status='processing', progress=progress)
+        return render_template('status.html', job=job, status='processing', progress=progress, job_status=job_status)
 
 @app.route('/download/<job_id>/<type>')
 def download(job_id, type):
