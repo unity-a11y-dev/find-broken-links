@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Status - Broken Link Checker</title>
+    {% if status == 'processing' %}
+    <meta http-equiv="refresh" content="5">
+    {% endif %}
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #222;
+            max_width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        main {
+            background: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #ddd;
+        }
+        h1 {
+            color: #1a1a1a;
+            margin-top: 0;
+        }
+        .status-box {
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .processing {
+            background-color: #e3f2fd;
+            color: #0d47a1;
+            border: 1px solid #bbdefb;
+        }
+        .finished {
+            background-color: #e8f5e9;
+            color: #1b5e20;
+            border: 1px solid #c8e6c9;
+        }
+        .failed {
+            background-color: #ffebee;
+            color: #b71c1c;
+            border: 1px solid #ffcdd2;
+        }
+        .download-links {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .btn-primary {
+            background-color: #0056b3;
+            color: white;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .btn:focus {
+            outline: 3px solid #0056b3;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Job Status</h1>
+        
+        {% if status == 'processing' %}
+            <div class="status-box processing" role="status" aria-live="polite">
+                <h2>Processing...</h2>
+                <p>Your file is being processed. This page will refresh automatically.</p>
+                <p>Job ID: {{ job.get_id() }}</p>
+            </div>
+        {% elif status == 'finished' %}
+            <div class="status-box finished" role="status">
+                <h2>Complete!</h2>
+                <p>Your file has been processed successfully.</p>
+                <p>Found {{ job.result.total_good }} good links and {{ job.result.total_bad }} bad links.</p>
+            </div>
+            
+            <div class="download-links">
+                <a href="{{ url_for('download', job_id=job.get_id(), type='good') }}" class="btn btn-primary">Download Good URLs</a>
+                <a href="{{ url_for('download', job_id=job.get_id(), type='bad') }}" class="btn btn-secondary">Download Bad URLs</a>
+            </div>
+            
+            <div style="margin-top: 30px; text-align: center;">
+                <a href="{{ url_for('index') }}" style="color: #0056b3;">Check another file</a>
+            </div>
+        {% elif status == 'failed' %}
+            <div class="status-box failed" role="alert">
+                <h2>Failed</h2>
+                <p>Something went wrong while processing your file.</p>
+            </div>
+            <div style="margin-top: 30px; text-align: center;">
+                <a href="{{ url_for('index') }}" style="color: #0056b3;">Try again</a>
+            </div>
+        {% endif %}
+    </main>
+</body>
+</html>

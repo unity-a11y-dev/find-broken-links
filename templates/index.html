@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broken Link Checker</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #222;
+            max_width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        main {
+            background: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #ddd;
+        }
+        h1 {
+            color: #1a1a1a;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        input[type="file"] {
+            display: block;
+            margin-top: 5px;
+            padding: 10px;
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        input[type="file"]:focus {
+            outline: 3px solid #0056b3;
+            outline-offset: 2px;
+        }
+        button {
+            background-color: #0056b3;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #004494;
+        }
+        button:focus {
+            outline: 3px solid #0056b3;
+            outline-offset: 2px;
+        }
+        .help-text {
+            font-size: 0.95em;
+            color: #555;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Broken Link Checker</h1>
+        <p>Upload a CSV file to check for broken links. The tool will extract URLs from any column and verify them concurrently.</p>
+        
+        <form action="/" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="file-upload">Select CSV File</label>
+                <input type="file" id="file-upload" name="file" accept=".csv" required aria-describedby="file-help">
+                <p id="file-help" class="help-text">Accepted format: .csv. The file will be processed to find and check all URLs.</p>
+            </div>
+            <button type="submit">Start Check</button>
+        </form>
+    </main>
+</body>
+</html>
