@@ -214,11 +214,14 @@ def generate_results_csv(results: List[LinkResult], counts: Dict[str, int]) -> s
         )
     return output.getvalue()
 
+from rq import get_current_job
+
 def process_csv_task(csv_content: str, timeout=12.0, workers=20, delay=0.0, treat_403_active=False):
     """
     Task to be executed by RQ worker.
     Returns a dictionary with 'good_csv' and 'bad_csv' strings.
     """
+    job = get_current_job()
     session = build_session(retries=2)
     urls, counts = read_csv_urls_from_string(csv_content)
     
@@ -233,6 +236,8 @@ def process_csv_task(csv_content: str, timeout=12.0, workers=20, delay=0.0, trea
 
     active: List[LinkResult] = []
     broken: List[LinkResult] = []
+    total_urls = len(urls)
+    processed_count = 0
 
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futures = [
@@ -242,6 +247,11 @@ def process_csv_task(csv_content: str, timeout=12.0, workers=20, delay=0.0, trea
         for fut in as_completed(futures):
             res = fut.result()
             (active if res.ok else broken).append(res)
+            
+            processed_count += 1
+            if job:
+                job.meta['progress'] = int((processed_count / total_urls) * 100)
+                job.save_meta()
 
     active.sort(key=lambda r: (r.status_code or 999, r.url))
     broken.sort(key=lambda r: (r.status_code or 999, r.url))
