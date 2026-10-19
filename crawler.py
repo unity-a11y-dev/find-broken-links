@@ -73,7 +73,13 @@ def resolve_url(base: str, href: str) -> Optional[str]:
 
 def in_scope(url: str, start_url: str) -> bool:
     candidate, start = urlsplit(url), urlsplit(start_url)
-    if (candidate.hostname, candidate.port) != (start.hostname, start.port):
+    candidate_host = candidate.hostname or ""
+    start_host = start.hostname or ""
+    if candidate_host.startswith("www."):
+        candidate_host = candidate_host[4:]
+    if start_host.startswith("www."):
+        start_host = start_host[4:]
+    if (candidate_host, candidate.port) != (start_host, start.port):
         return False
     # Decode before comparison so encoded traversal cannot escape the path boundary.
     root = posixpath.normpath(unquote(start.path)).rstrip("/")

@@ -8,9 +8,9 @@ import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from broken_link_check import build_session, check_one_url, process_file
+from broken_link_check import LinkResult, build_session, check_one_url, process_file
 from crawler import crawl_site, in_scope, normalize_url, validate_start_url
 
 
@@ -135,6 +135,64 @@ class CrawlTests(unittest.TestCase):
         self.assertEqual(result["total_redirected"], 1)
         self.assertNotIn(("GET", "/section-other/"), self.internal.seen)
 
+    def test_www_alias_discovery(self):
+        for start_host, alias_host in (
+            ("www.example.com", "example.com"),
+            ("example.com", "www.example.com"),
+        ):
+            for redirect in (True, False):
+                with self.subTest(start_host=start_host, redirect=redirect):
+                    start = f"https://{start_host}/section/"
+                    alias = f"https://{alias_host}/section/"
+                    child = alias + "child"
+                    leaf = alias + "leaf"
+                    routes = {
+                        start: (
+                            (301, {"Location": alias}, "") if redirect else
+                            html(f'<a href="{child}">child</a>')
+                        ),
+                        alias: html('<a href="child">child</a>'),
+                        child: html(f"""
+                            <a href="leaf">leaf</a><a href="{start}">cycle</a>
+                            <a href="/section-other/">outside section</a>
+                            <a href="https://sub.example.com/section/">subdomain</a>
+                            <a href="https://example.org/section/">external</a>
+                        """),
+                        leaf: html("No links"),
+                    }
+
+                    def get(url, **kwargs):
+                        status, headers, content = routes[url]
+                        response = MagicMock()
+                        response.__enter__.return_value = response
+                        response.status_code = status
+                        response.is_redirect = status == 301
+                        response.headers = headers
+                        response.text = content
+                        return response
+
+                    def check(session, url, timeout, delay, treat_403_active):
+                        return LinkResult(
+                            url=url, final_url=url, status_code=200, ok=True,
+                            error="", method="HEAD", elapsed_s=0, redirect_chain=(),
+                        )
+
+                    with patch("crawler.build_session") as factory, patch(
+                        "crawler.check_one_url", side_effect=check
+                    ):
+                        session = factory.return_value.__enter__.return_value
+                        session.get.side_effect = get
+                        result = crawl_site(start, retries=0)
+                    expected = {start, child, leaf}
+                    if redirect:
+                        expected.add(alias)
+                    self.assertEqual(result["pages_crawled"], len(expected))
+                    self.assertEqual(
+                        {call.args[0] for call in session.get.call_args_list}, expected,
+                    )
+                    self.assertEqual(result["total_crawl_errors"], 0)
+                    self.assertIn(leaf, result["good_csv"])
+
     def test_start_failure_is_explicit(self):
         result = crawl_site(self.origin + "/absent/", retries=0)
         self.assertEqual(result["total_bad"], 1)
@@ -199,6 +257,31 @@ class CrawlTests(unittest.TestCase):
                         "http://[bad", "http://example.com:bad"):
             with self.assertRaises(ValueError):
                 validate_start_url(invalid)
+
+    def test_www_scope_preserves_host_port_and_path_boundaries(self):
+        for host, alias in (
+            ("example.com", "www.example.com"),
+            ("www.example.com", "example.com"),
+        ):
+            root = f"https://{host}/section/"
+            for path in ("/section", "/section/", "/section/child?x=1"):
+                self.assertTrue(in_scope(f"https://{alias}{path}", root))
+            self.assertTrue(in_scope(f"http://{alias}/section/", root))
+            for url in (
+                f"https://{alias}/section-other/",
+                f"https://{alias}/section/%2e%2e/outside",
+                f"https://{alias}:444/section/",
+                "https://sub.example.com/section/",
+                "https://www.www.example.com/section/",
+                "https://example.com.evil.test/section/",
+                "https://wwwexample.com/section/",
+                "https://example.org/section/",
+            ):
+                self.assertFalse(in_scope(url, root), url)
+            self.assertTrue(in_scope(
+                f"https://{alias}:8443/section/child",
+                f"https://{host}:8443/section/",
+            ))
 
     def test_connection_failure_report(self):
         with patch("crawler.build_session") as factory:

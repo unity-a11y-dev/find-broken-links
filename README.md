@@ -19,10 +19,14 @@ Find broken and redirected links using the web interface. You can either:
 
 ### What gets crawled
 
-- Only pages on the **same host** and **under the starting path** are crawled.
+- Only pages on the **same host** (treating `www` and non-`www` variants as
+  equivalent), with the **same port** and **under the starting path**, are crawled.
   Starting at `https://example.com/department/` includes
-  `https://example.com/department/team`, but not `https://example.com/department-other/`,
-  `https://www.example.com/department/`, or other websites.
+  `https://example.com/department/team` and `https://www.example.com/department/`,
+  but not `https://example.com/department-other/`,
+  `https://sub.example.com/department/`, or other websites.
+  Redirects between `www` and non-`www` variants are followed during discovery
+  when they remain within these path and port boundaries.
 - To crawl an entire section, enter the section folder URL (ending in `/`) instead
   of a specific page such as `.../department/index.html`.
 - **All links found on crawled pages are checked**, including links to other
