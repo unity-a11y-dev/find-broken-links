@@ -22,5 +22,5 @@ if __name__ == '__main__':
     if os.name == 'nt':
         # Windows has no SIGALRM; TimerDeathPenalty keeps per-job timeouts functional.
         worker.death_penalty_class = TimerDeathPenalty
-    print(f"Worker listening on queues: {listen} with connection: {conn} ({worker_cls.__name__})")
+    print(f"Worker listening on queues: {listen} ({worker_cls.__name__})")
     worker.work()
