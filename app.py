@@ -19,7 +19,7 @@ def index():
             except ValueError as exc:
                 return render_template('index.html', error=str(exc)), 400
             job = q.enqueue(process_crawl_task, start_url, job_timeout=-1, result_ttl=3600)
-            return redirect(url_for('status', job_id=job.get_id()))
+            return redirect(url_for('status', job_id=job.id))
         if 'file' not in request.files:
             return redirect(request.url)
         file = request.files['file']
@@ -39,7 +39,7 @@ def index():
                     content = file.read().decode('latin-1')
             
             job = q.enqueue(process_csv_task, content, result_ttl=3600)
-            return redirect(url_for('status', job_id=job.get_id()))
+            return redirect(url_for('status', job_id=job.id))
     return render_template('index.html')
 
 @app.route('/status/<job_id>')

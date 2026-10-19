@@ -155,7 +155,7 @@
                         </ul>
                     </div>
                 {% endif %}
-                <p style="margin-top: 10px; font-size: 0.8em; color: #666;">Job ID: {{ job.get_id() }}</p>
+                <p style="margin-top: 10px; font-size: 0.8em; color: #666;">Job ID: {{ job.id }}</p>
             </div>
         {% elif status == 'finished' %}
             <div class="status-box finished" role="status">
@@ -178,11 +178,11 @@
             </div>
             
             <div class="download-links">
-                <a href="{{ url_for('download', job_id=job.get_id(), type='good') }}" class="btn btn-primary">Download Good URLs</a>
-                <a href="{{ url_for('download', job_id=job.get_id(), type='bad') }}" class="btn btn-secondary">Download Bad URLs</a>
+                <a href="{{ url_for('download', job_id=job.id, type='good') }}" class="btn btn-primary">Download Good URLs</a>
+                <a href="{{ url_for('download', job_id=job.id, type='bad') }}" class="btn btn-secondary">Download Bad URLs</a>
                 {% if 'redirected_csv' in job.result %}
-                <a href="{{ url_for('download', job_id=job.get_id(), type='redirected') }}" class="btn btn-secondary">Download Redirected URLs</a>
-                <a href="{{ url_for('download', job_id=job.get_id(), type='crawl_errors') }}" class="btn btn-secondary">Download Crawl Errors</a>
+                <a href="{{ url_for('download', job_id=job.id, type='redirected') }}" class="btn btn-secondary">Download Redirected URLs</a>
+                <a href="{{ url_for('download', job_id=job.id, type='crawl_errors') }}" class="btn btn-secondary">Download Crawl Errors</a>
                 {% endif %}
             </div>
             

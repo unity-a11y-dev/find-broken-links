@@ -266,7 +266,7 @@ class WebTests(unittest.TestCase):
     def test_crawl_form_and_enqueue(self):
         self.assertIn(b'Start Crawl', self.client.get("/").data)
         with patch.object(self.module.q, "enqueue") as enqueue:
-            enqueue.return_value.get_id.return_value = "crawl-id"
+            enqueue.return_value.id = "crawl-id"
             response = self.client.post("/", data={
                 "mode": "crawl", "start_url": "https://example.com/section/",
             })
@@ -286,7 +286,7 @@ class WebTests(unittest.TestCase):
 
     def test_csv_upload_unchanged(self):
         with patch.object(self.module.q, "enqueue") as enqueue:
-            enqueue.return_value.get_id.return_value = "csv-id"
+            enqueue.return_value.id = "csv-id"
             response = self.client.post("/", data={
                 "file": (io.BytesIO(b"url\nhttps://example.com\n"), "urls.csv"),
             })
@@ -304,7 +304,7 @@ class WebTests(unittest.TestCase):
         }
         job = SimpleNamespace(
             is_finished=True, is_failed=False, result=result, meta={},
-            get_status=lambda: "finished", get_id=lambda: "id",
+            get_status=lambda: "finished", id="id",
         )
         with patch.object(self.module.Job, "fetch", return_value=job):
             page = self.client.get("/status/id")
@@ -322,7 +322,7 @@ class WebTests(unittest.TestCase):
         job = SimpleNamespace(
             is_finished=False, is_failed=False,
             meta={"phase": "discovering", "pages_crawled": 3, "links_discovered": 8},
-            get_status=lambda: "started", get_id=lambda: "id",
+            get_status=lambda: "started", id="id",
         )
         with patch.object(self.module.Job, "fetch", return_value=job):
             response = self.client.get("/status/id")
@@ -334,7 +334,7 @@ class WebTests(unittest.TestCase):
             is_finished=False, is_failed=False,
             meta={"phase": "checking", "crawl_limit_reached": True,
                   "crawl_limit": 600, "pages_remaining": 1},
-            get_status=lambda: "started", get_id=lambda: "id",
+            get_status=lambda: "started", id="id",
         )
         with patch.object(self.module.Job, "fetch", return_value=job):
             response = self.client.get("/status/id")
