@@ -75,7 +75,7 @@ def extract_urls_from_row(values: Iterable[str]) -> List[str]:
             urls.append(url)
     return urls
 
-def sniff_dialect(sample: str) -> csv.Dialect:
+def sniff_dialect(sample: str) -> type[csv.Dialect]:
     try:
         return csv.Sniffer().sniff(sample)
     except Exception:
@@ -215,6 +215,19 @@ def generate_results_csv(results: List[LinkResult], counts: Dict[str, int]) -> s
     return output.getvalue()
 
 from rq import get_current_job
+
+def process_crawl_task(start_url: str):
+    from crawler import crawl_site
+
+    job = get_current_job()
+
+    def progress(values: Dict[str, object]) -> None:
+        if job:
+            job.meta.update(values)
+            job.save_meta()
+
+    return crawl_site(start_url, progress=progress)
+
 
 def process_csv_task(csv_content: str, timeout=12.0, workers=20, delay=0.0, treat_403_active=False):
     """

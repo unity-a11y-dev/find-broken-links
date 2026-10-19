@@ -131,8 +131,16 @@
         {% if status == 'processing' %}
             <div class="status-box processing" role="status" aria-live="polite">
                 <h2>{{ job_status|title }}...</h2>
+                {% if job.meta.get('crawl_limit_reached') %}
+                    <p role="alert">Crawl limit of {{ job.meta.get('crawl_limit') }} URLs reached.
+                        {{ job.meta.get('pages_remaining', 0) }} discovered in-scope URLs were not crawled.
+                        Checking all links found on crawled pages.</p>
+                {% endif %}
                 {% if job_status == 'queued' %}
-                    <p>Your file is waiting in the queue.</p>
+                    <p>Your check is waiting in the queue.</p>
+                {% elif job.meta.get('phase') == 'discovering' %}
+                    <p>Discovering pages: {{ job.meta.get('pages_crawled', 0) }} fetched,
+                        {{ job.meta.get('links_discovered', 0) }} unique links found.</p>
                 {% else %}
                     <p>Processing URL {{ processed }} of {{ total }}</p>
                     
@@ -152,22 +160,39 @@
         {% elif status == 'finished' %}
             <div class="status-box finished" role="status">
                 <h2>Complete!</h2>
-                <p>Your file has been processed successfully.</p>
+                <p>Your check has completed.</p>
                 <p>Found {{ job.result.total_good }} good links and {{ job.result.total_bad }} bad links.</p>
+                {% if 'pages_crawled' in job.result %}
+                <p>Fetched {{ job.result.pages_crawled }} in-scope URLs during discovery.
+                    Found {{ job.result.total_redirected }} redirected links (also included in good or bad results).</p>
+                {% if job.result.total_crawl_errors %}
+                <p role="alert">Discovery issues: {{ job.result.total_crawl_errors }} (page fetch errors or crawl-limit warnings).
+                    Download the crawl errors report for details.</p>
+                {% endif %}
+                {% if job.result.get('crawl_limit_reached') %}
+                <p role="alert">Crawl limit of {{ job.result.crawl_limit }} URLs reached.
+                    {{ job.result.pages_remaining }} discovered in-scope URLs were not crawled.
+                    All links found on crawled pages were checked.</p>
+                {% endif %}
+                {% endif %}
             </div>
             
             <div class="download-links">
                 <a href="{{ url_for('download', job_id=job.get_id(), type='good') }}" class="btn btn-primary">Download Good URLs</a>
                 <a href="{{ url_for('download', job_id=job.get_id(), type='bad') }}" class="btn btn-secondary">Download Bad URLs</a>
+                {% if 'redirected_csv' in job.result %}
+                <a href="{{ url_for('download', job_id=job.get_id(), type='redirected') }}" class="btn btn-secondary">Download Redirected URLs</a>
+                <a href="{{ url_for('download', job_id=job.get_id(), type='crawl_errors') }}" class="btn btn-secondary">Download Crawl Errors</a>
+                {% endif %}
             </div>
             
             <div style="margin-top: 30px; text-align: center;">
-                <a href="{{ url_for('index') }}" style="color: #0056b3;">Check another file</a>
+                <a href="{{ url_for('index') }}" style="color: #0056b3;">Start another check</a>
             </div>
         {% elif status == 'failed' %}
             <div class="status-box failed" role="alert">
                 <h2>Failed</h2>
-                <p>Something went wrong while processing your file.</p>
+                <p>Something went wrong while running your check.</p>
                 {% if job.exc_info %}
                     <pre style="text-align: left; background: #fff; padding: 10px; overflow-x: auto; font-size: 0.8em;">{{ job.exc_info }}</pre>
                 {% endif %}

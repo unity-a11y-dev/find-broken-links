@@ -4,3 +4,5 @@ venv/
 .env
 input/
 output/
+data/
+dump.rdb

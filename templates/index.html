@@ -34,7 +34,7 @@
             font-weight: bold;
             font-size: 1.1em;
         }
-        input[type="file"] {
+        input[type="file"], input[type="url"] {
             display: block;
             margin-top: 5px;
             padding: 10px;
@@ -44,7 +44,7 @@
             width: 100%;
             box-sizing: border-box;
         }
-        input[type="file"]:focus {
+        input[type="file"]:focus, input[type="url"]:focus {
             outline: 3px solid #0056b3;
             outline-offset: 2px;
         }
@@ -75,6 +75,22 @@
 <body>
     <main>
         <h1>Broken Link Checker</h1>
+        {% if error %}
+        <p role="alert">{{ error }}</p>
+        {% endif %}
+        <h2>Crawl a website section</h2>
+        <p>Discover pages within a starting URL's host and path, and check their links, including external links.</p>
+        <form action="/" method="post">
+            <input type="hidden" name="mode" value="crawl">
+            <div class="form-group">
+                <label for="start-url">Starting URL</label>
+                <input type="url" id="start-url" name="start_url" required
+                       placeholder="https://example.com/department/" aria-describedby="crawl-help">
+                <p id="crawl-help" class="help-text">Static HTML links only. Discovery is limited to 600 URLs; reaching the limit is reported. All links found on those pages are checked, including external links. External pages and paths outside this section are not crawled.</p>
+            </div>
+            <button type="submit">Start Crawl</button>
+        </form>
+        <h2>Check URLs from a CSV</h2>
         <p>Upload a CSV file to check for broken links. The tool will extract URLs from any column and verify them concurrently.</p>
         
         <form action="/" method="post" enctype="multipart/form-data">

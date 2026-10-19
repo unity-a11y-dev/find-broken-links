@@ -9,7 +9,8 @@ Batch broken link checker for CSVs in ./input
     <input_basename>_bad_urls.csv
 
 Usage:
-  python broken_link_check_batch.py
+  python broken_link_check.py
+  python broken_link_check.py --start-url https://example.com/department/
 
 Optional flags:
   --timeout 12
@@ -55,6 +56,7 @@ class LinkResult:
     error: str
     method: str
     elapsed_s: float
+    redirect_chain: Tuple[str, ...] = ()
 
 
 def build_session(retries: int) -> requests.Session:
@@ -106,7 +108,7 @@ def extract_urls_from_row(values: Iterable[str]) -> List[str]:
     return urls
 
 
-def sniff_dialect(sample: str) -> csv.Dialect:
+def sniff_dialect(sample: str) -> type[csv.Dialect]:
     try:
         return csv.Sniffer().sniff(sample)
     except Exception:
@@ -145,6 +147,13 @@ def read_csv_urls(path: Path) -> Tuple[Set[str], Dict[str, int]]:
     raise UnicodeDecodeError("Unable to decode file with utf-8/latin-1", b"", 0, 1, "decode error")
 
 
+def _redirect_chain(response: requests.Response) -> Tuple[str, ...]:
+    return tuple(
+        f"{item.status_code} {item.url} -> {item.headers.get('Location', '')}"
+        for item in response.history
+    )
+
+
 def check_one_url(
     session: requests.Session,
     url: str,
@@ -160,6 +169,7 @@ def check_one_url(
     status_code: Optional[int] = None
     method_used = ""
     last_err = ""
+    redirect_chain: Tuple[str, ...] = ()
 
     def ok_status(code: int) -> bool:
         if 200 <= code <= 399:
@@ -174,18 +184,24 @@ def check_one_url(
         resp = session.head(url, allow_redirects=True, timeout=timeout)
         final_url = str(resp.url)
         status_code = int(resp.status_code)
+        redirect_chain = _redirect_chain(resp)
+        resp.close()
 
         if ok_status(status_code):
-            return LinkResult(url, final_url, status_code, True, "", method_used, round(time.time() - start, 3))
+            return LinkResult(url, final_url, status_code, True, "", method_used, round(time.time() - start, 3), redirect_chain)
 
         # fall back to GET for likely HEAD-blocking / transient cases
         if status_code in (400, 401, 403, 405, 406, 409, 415) or status_code >= 500:
             last_err = f"HEAD returned {status_code}"
         else:
-            return LinkResult(url, final_url, status_code, False, f"HTTP {status_code}", method_used, round(time.time() - start, 3))
+            return LinkResult(url, final_url, status_code, False, f"HTTP {status_code}", method_used, round(time.time() - start, 3), redirect_chain)
 
     except requests.RequestException as e:
         last_err = f"HEAD exception: {type(e).__name__}: {e}"
+        if e.response is not None:
+            final_url = str(e.response.url)
+            status_code = e.response.status_code
+            redirect_chain = _redirect_chain(e.response)
 
     # GET fallback
     try:
@@ -193,6 +209,7 @@ def check_one_url(
         resp = session.get(url, allow_redirects=True, timeout=timeout, stream=True)
         final_url = str(resp.url)
         status_code = int(resp.status_code)
+        redirect_chain = _redirect_chain(resp)
         try:
             resp.close()
         except Exception:
@@ -207,8 +224,13 @@ def check_one_url(
             "" if ok else f"HTTP {status_code}",
             method_used,
             round(time.time() - start, 3),
+            redirect_chain,
         )
     except requests.RequestException as e:
+        if e.response is not None:
+            final_url = str(e.response.url)
+            status_code = e.response.status_code
+            redirect_chain = _redirect_chain(e.response)
         return LinkResult(
             url,
             final_url,
@@ -217,6 +239,7 @@ def check_one_url(
             f"{last_err} | GET exception: {type(e).__name__}: {e}",
             method_used or "GET",
             round(time.time() - start, 3),
+            redirect_chain,
         )
 
 
@@ -296,9 +319,10 @@ def process_file(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Batch broken link checker for CSVs in a folder.")
+    parser = argparse.ArgumentParser(description="Check CSV URLs or crawl a website section for broken and redirected links.")
     parser.add_argument("--input-dir", default="input", help="Folder containing input CSV files.")
     parser.add_argument("--output-dir", default="output", help="Folder to write output CSV files.")
+    parser.add_argument("--start-url", help="Crawl this URL and pages under its host/path instead of reading CSVs.")
     parser.add_argument("--timeout", type=float, default=12.0, help="Per-request timeout seconds.")
     parser.add_argument("--workers", type=int, default=20, help="Concurrent workers per file.")
     parser.add_argument("--retries", type=int, default=2, help="Retry count for transient failures.")
@@ -309,6 +333,31 @@ def main() -> int:
         help="Treat HTTP 403 as active (useful when sites block bots).",
     )
     args = parser.parse_args()
+
+    if args.start_url:
+        from crawler import crawl_site, write_crawl_reports
+
+        try:
+            reports = crawl_site(
+                args.start_url, timeout=args.timeout, retries=args.retries,
+                delay=args.delay, treat_403_active=args.treat_403_active,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+        write_crawl_reports(Path(args.output_dir), reports)
+        print(
+            f"Crawled {reports['pages_crawled']} pages. "
+            f"Good: {reports['total_good']}, broken: {reports['total_bad']}, "
+            f"redirected: {reports['total_redirected']}, "
+            f"discovery issues: {reports['total_crawl_errors']}"
+        )
+        if reports["crawl_limit_reached"]:
+            print(
+                f"WARNING: Crawl limit of {reports['crawl_limit']} URLs reached; "
+                f"{reports['pages_remaining']} discovered in-scope URLs were not crawled. "
+                "All links found on crawled pages were checked."
+            )
+        return 0
 
     in_dir = Path(args.input_dir)
     out_dir = Path(args.output_dir)

@@ -3,7 +3,8 @@ from flask import Flask, request, render_template, redirect, url_for, send_file,
 from rq import Queue
 from rq.job import Job
 from worker import conn
-from tasks import process_csv_task
+from tasks import process_csv_task, process_crawl_task
+from crawler import validate_start_url
 import io
 
 app = Flask(__name__)
@@ -12,6 +13,13 @@ q = Queue(connection=conn)
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
+        if request.form.get('mode') == 'crawl':
+            try:
+                start_url = validate_start_url(request.form.get('start_url', ''))
+            except ValueError as exc:
+                return render_template('index.html', error=str(exc)), 400
+            job = q.enqueue(process_crawl_task, start_url, job_timeout=-1, result_ttl=3600)
+            return redirect(url_for('status', job_id=job.get_id()))
         if 'file' not in request.files:
             return redirect(request.url)
         file = request.files['file']
@@ -70,6 +78,9 @@ def download(job_id, type):
     elif type == 'bad':
         csv_data = result['bad_csv']
         filename = 'bad_urls.csv'
+    elif type in ('redirected', 'crawl_errors') and f'{type}_csv' in result:
+        csv_data = result[f'{type}_csv']
+        filename = f'{type}.csv'
     else:
         return "Invalid type", 400
         
